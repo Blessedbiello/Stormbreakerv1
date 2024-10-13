@@ -1,70 +1,68 @@
-#![allow(clippy::result_large_err)]
-
 use anchor_lang::prelude::*;
 
-declare_id!("2zdATqXkAkoFzJ5FPWoC2wkrS1BC5iDeDAebJx9xwM8P");
+mod constants;
+mod state;
+mod contexts;
+
+use contexts::*;
+mod error;
+mod helpers;
+
+
+declare_id!("Af1KM8dxY7Uawhr6YG68vw6fpomTzom7zDUWap2J7p2K");
 
 #[program]
-pub mod stormbreakerv1 {
+pub mod stormbreaker {
     use super::*;
 
-  pub fn close(_ctx: Context<CloseStormbreakerv1>) -> Result<()> {
-    Ok(())
-  }
+    pub fn initialize(
+        ctx: Context<Initialize>,
+        seed: u64,
+        fee: u16,       //Fee as basis points
+        authority: Option<Pubkey>, //update auth (if required)
+        ) -> Result<()> {
+            // Initialize our AMM config
+        ctx.accounts.init(&ctx.bumps, seed, fee, authority)
+    }
 
-  pub fn decrement(ctx: Context<Update>) -> Result<()> {
-    ctx.accounts.stormbreakerv1.count = ctx.accounts.stormbreakerv1.count.checked_sub(1).unwrap();
-    Ok(())
-  }
+    pub fn deposit(
+        ctx: Context<Deposit>,
+        amount: u64, //Amount of LP token to claim
+        max_x: u64, //Max amount of X we are willing to deposit
+        max_y: u64, //Max amount of Y we are willing to deposit
+        expiration: i64,
+    ) -> Result<()> {
+        // Deposit Liquidity to swap
+        ctx.accounts.deposit(amount, max_x, max_y, expiration)
+    }
 
-  pub fn increment(ctx: Context<Update>) -> Result<()> {
-    ctx.accounts.stormbreakerv1.count = ctx.accounts.stormbreakerv1.count.checked_add(1).unwrap();
-    Ok(())
-  }
+    pub fn withdraw(
+        ctx: Context<Withdraw>,
+        amount: u64, //Amount of liquidity tokens to burn
+        min_x: u64, //Minimum amount of liquidity we are willing to recieve
+        min_y: u64, //Minimun amount of liquidity we are willing recieve
+        expiration: i64,
+    ) -> Result<()> {
+        //Withdraw liquidity from
+        ctx.accounts.withdraw(amount, min_x, min_y, expiration)
+    }
 
-  pub fn initialize(_ctx: Context<InitializeStormbreakerv1>) -> Result<()> {
-    Ok(())
-  }
+    pub fn swap(
+        ctx: Context<Swap>,
+        is_x: bool,
+        amount: u64, // Amount of tokens we deposit
+        min: u64, // Minimum amount of token I'd be willing to withdraw
+        expiration: i64,
+    ) -> Result<()> {
+        // Swap Token X for Token Y or vice versa
+        ctx.accounts.swap(is_x, amount, min, expiration)
+    }
 
-  pub fn set(ctx: Context<Update>, value: u8) -> Result<()> {
-    ctx.accounts.stormbreakerv1.count = value.clone();
-    Ok(())
-  }
-}
+    pub fn lock(ctx: Context<Update>) -> Result<()> {
+        ctx.accounts.lock()
+    }
 
-#[derive(Accounts)]
-pub struct InitializeStormbreakerv1<'info> {
-  #[account(mut)]
-  pub payer: Signer<'info>,
-
-  #[account(
-  init,
-  space = 8 + Stormbreakerv1::INIT_SPACE,
-  payer = payer
-  )]
-  pub stormbreakerv1: Account<'info, Stormbreakerv1>,
-  pub system_program: Program<'info, System>,
-}
-#[derive(Accounts)]
-pub struct CloseStormbreakerv1<'info> {
-  #[account(mut)]
-  pub payer: Signer<'info>,
-
-  #[account(
-  mut,
-  close = payer, // close account and return lamports to payer
-  )]
-  pub stormbreakerv1: Account<'info, Stormbreakerv1>,
-}
-
-#[derive(Accounts)]
-pub struct Update<'info> {
-  #[account(mut)]
-  pub stormbreakerv1: Account<'info, Stormbreakerv1>,
-}
-
-#[account]
-#[derive(InitSpace)]
-pub struct Stormbreakerv1 {
-  count: u8,
+    pub fn unlock(ctx: Context<Update>) -> Result<()> {
+        ctx.accounts.unlock()
+    }
 }
